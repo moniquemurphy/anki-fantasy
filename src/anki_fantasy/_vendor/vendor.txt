@@ -1,0 +1,4 @@
+yoyo-migrations==7.0.0
+sqlparse==0.3.0
+iniherit==0.3.9
+text-unidecode==1.3
