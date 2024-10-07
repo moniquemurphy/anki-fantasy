@@ -24,7 +24,8 @@ from aqt.qt import (
     QAbstractScrollArea,
     QSortFilterProxyModel,
     QLineEdit,
-    QVariant
+    QVariant,
+    QSizePolicy,
 )
 
 from aqt import mw
@@ -367,7 +368,8 @@ class CraftingDialog(QDialog):
         self.current_recipes = get_alphabetized_recipes_by_level(self.crafting_level)
 
         self.table = QTableWidget()
-        self.table.setGeometry(100, 60, 1200, 800)
+        self.table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self.table.setGeometry(100, 60, 1200, 1000)
         self.table.setRowCount(len(self.current_recipes))
         self.table.setColumnCount(8)
         self.table.setHorizontalHeaderLabels(
@@ -383,8 +385,7 @@ class CraftingDialog(QDialog):
             ]
         )
         self.table.setIconSize(QSize(72, 72))
-        self.table.setFixedWidth(1250)
-        self.table.setFixedHeight(1000)
+        self.table.setMinimumSize(1000, 1000)
 
         self.populate_crafting_table()
 
@@ -393,6 +394,7 @@ class CraftingDialog(QDialog):
 
         layout = QVBoxLayout()
         layout.addWidget(self.table)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.setWindowTitle("Recipes")
         self.setLayout(layout)
 

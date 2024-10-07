@@ -6,8 +6,12 @@ All notable changes to Anki Fantasy will be documented here. You can click on ea
 <a href="https://ko-fi.com/unrelatedwaffle" rel="nofollow">Buy me a coffee</a>
 </p>
 
+## [1.0.0] - 2024-09-27
+
 ### Added
 
+- Fixed recipe bug in set 3
+- Fixed window sizing/resizing ability for later levels
 - Initial release of Anki Fantasy
 
 -----

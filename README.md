@@ -7,8 +7,8 @@ This add-on is intended to be used for a very long time. There are 98 levels, ea
 
 If you like this addon, ![Ko-fi Icon](screenshots/ko-fi.png) <a href="https://ko-fi.com/unrelatedwaffle">Buy me a coffee</a>?
 
-# Adding images
-There are a lot of required images for this add-on. If you download and build from GitHub, this is not an issue, but the add-on is too large with images included to upload to AnkiWeb. Once you have installed the add-on, you can download the images separately as a .zip file here. You will need to unzip to the add-on folder/img (example on a Mac: Application Support/Anki 2/User 1/addons21/This Add-on id/img).
+## Adding images (Important!)
+There are a lot of required images for this add-on. If you download and build from GitHub, this is not an issue, but the add-on is too large with images included to upload to AnkiWeb. Once you have installed the add-on, you can download the images separately as a .zip file here. You will need to unzip to the add-on folder to see the images: (example end result folder on a Mac: Application Support/Anki 2/User 1/addons21/This Add-on id/img).
 
 There are three menus:
 ### Inventory

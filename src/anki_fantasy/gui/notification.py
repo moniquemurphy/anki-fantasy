@@ -6,6 +6,7 @@
 # Copyright (C) 2016-2023  Aristotelis P. <https://glutanimate.com/>
 # Copyright (C) 2019-2020  zjosua <https://github.com/zjosua>
 # Copyright (C) 2016-2023  Ankitects Pty Ltd and contributors
+# Copyright (C) 2024-      unrelatedwaffle <https://momomori-eki.net>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
