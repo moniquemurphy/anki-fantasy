@@ -72,7 +72,7 @@ class RewardsRepository:
 
     def update_crafting_level(self):
         current_level = self.get_crafting_level()
-        current_level_int = current_level[-1]
+        current_level_int = int(current_level[-1])
         next_level_int = current_level_int + 1
         next_level_str = "set_{0}".format(next_level_int)
 
