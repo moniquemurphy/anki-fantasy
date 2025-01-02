@@ -10,6 +10,7 @@ All notable changes to Anki Fantasy will be documented here. You can click on ea
 
 ### Added
 
+- Fixed level up bug
 - Fixed recipe bug in set 3
 - Fixed window sizing/resizing ability for later levels
 - Initial release of Anki Fantasy

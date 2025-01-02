@@ -183,8 +183,6 @@ class InventoryDialog(QDialog):
         self.proxy_model.sort(1, Qt.SortOrder.AscendingOrder)
 
         self.table.setModel(self.proxy_model)
-        self.table.setFixedWidth(800)
-        self.table.setFixedHeight(1000)
         self.table.resizeRowsToContents()
         self.table.resizeColumnsToContents()
         self.searchbar = QLineEdit()
@@ -197,8 +195,9 @@ class InventoryDialog(QDialog):
         layout.addWidget(self.searchbar)
         layout.addWidget(self.table)
 
-        self.setWindowTitle("Testing")
+        self.setWindowTitle("Inventory")
         self.setLayout(layout)
+        self.resize(1000, 1000)
 
 
 class ProgressDialog(QDialog):
@@ -317,13 +316,12 @@ class ProgressDialog(QDialog):
         scroll = QScrollArea()
         scroll.setWidget(groupBox)
         scroll.setWidgetResizable(True)
-        scroll.setFixedWidth(1100)
-        scroll.setFixedHeight(1000)
 
         layout = QVBoxLayout(self)
         layout.addWidget(scroll)
 
         self.show()
+        self.resize(1000, 1000)
 
     def populate_grid(self, specialty_initial_row, specialty_key_items):
         row_counter = specialty_initial_row
@@ -385,7 +383,6 @@ class CraftingDialog(QDialog):
             ]
         )
         self.table.setIconSize(QSize(72, 72))
-        self.table.setMinimumSize(1000, 1000)
 
         self.populate_crafting_table()
 
@@ -397,6 +394,7 @@ class CraftingDialog(QDialog):
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.setWindowTitle("Recipes")
         self.setLayout(layout)
+        self.resize(1000, 1000)
 
     def populate_crafting_table(self):
         for i, recipe in enumerate(self.current_recipes):

@@ -184,6 +184,7 @@ def call_method_on_object_from_factory_function(
 class ReviewingController:
     def __init__(self, rewards_repo):
         self.rewards_repo = rewards_repo
+        self.rewards_counter = 0
         self.streak = 0
         self.crafting_level = self.rewards_repo.get_crafting_level()
 
@@ -194,7 +195,8 @@ class ReviewingController:
             reward = random_reward(self.streak, self.crafting_level)
             if reward:
                 self.rewards_repo.create(reward)
-                self.show_tooltip(reward)
+                self.rewards_counter += 1
+                self.show_tooltip(reward)                
 
         else:
             self.streak = 0
@@ -207,6 +209,11 @@ class ReviewingController:
         <tr>
         <td valign="middle">
             <center><b>You got 1 <img src="{image_path}"> {reward["item_name"]}!</b></center>
+        </td>
+        </tr>
+        <tr>
+        <td valign="middle">
+            <center>Rewards today: {self.rewards_counter}</center>
         </td>
         </tr>
         </table>"""
