@@ -13,7 +13,7 @@ import textwrap
 # import six
 from . import six
 
-from .parser import Loader, ConfigParser, SafeConfigParser
+from .parser import Loader, ConfigParser
 
 #------------------------------------------------------------------------------
 class ByteLoader(Loader):
@@ -201,7 +201,7 @@ class TestIniherit(unittest.TestCase):
     files = {k: textwrap.dedent(v) for k, v in {
       'config.ini' : '[app]\noutput = %(tmpdir)s/var/result.log\n',
     }.items()}
-    parser = SafeConfigParser(
+    parser = ConfigParser(
       defaults={'tmpdir': '/tmp'}, loader=ByteLoader(dict(files)))
     parser.read('config.ini')
     self.assertEqual(parser.get('app', 'output'), '/tmp/var/result.log')
@@ -212,7 +212,7 @@ class TestIniherit(unittest.TestCase):
     files = {k: textwrap.dedent(v) for k, v in {
       'config.ini' : '[logger]\ntimefmt=%H:%M:%S\n',
     }.items()}
-    parser = SafeConfigParser(loader=ByteLoader(dict(files)))
+    parser = ConfigParser(loader=ByteLoader(dict(files)))
     parser.read('config.ini')
     self.assertEqual(parser.items('DEFAULT'), [])
     self.assertEqual(parser.get('logger', 'timefmt', raw=True), '%H:%M:%S')

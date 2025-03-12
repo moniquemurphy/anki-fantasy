@@ -30,7 +30,7 @@ def get_interpolation_defaults(path):
 
 def get_configparser(**defaults):
     if sys.version_info < (3, 2, 0):
-        return iniherit.SafeConfigParser(defaults=defaults)
+        return iniherit.ConfigParser(defaults=defaults)
     return iniherit.ConfigParser(defaults=defaults)
 
 

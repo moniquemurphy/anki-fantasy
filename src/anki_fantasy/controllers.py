@@ -20,7 +20,7 @@ from ._vendor.yoyo.exceptions import LockTimeout
 from aqt import mw
 from .libaddon.platform import PATH_THIS_ADDON
 from .gui.notification import Notification
-from .rewards import random_reward
+from .rewards import random_reward, random_rare_reward
 
 
 # Hack that we need because profileLoaded hook called after DeckBrowser shown
@@ -72,7 +72,9 @@ class RewardsRepository:
 
     def update_crafting_level(self):
         current_level = self.get_crafting_level()
-        current_level_int = int(current_level[-1])
+        w = "_"
+        _, _, res = current_level.partition(w)
+        current_level_int = int(res)
         next_level_int = current_level_int + 1
         next_level_str = "set_{0}".format(next_level_int)
 
@@ -192,11 +194,14 @@ class ReviewingController:
         if ease > 1:
             self.streak += 1
 
-            reward = random_reward(self.streak, self.crafting_level)
+            if self.rewards_counter % 50 == 0:
+                reward = random_rare_reward(self.crafting_level)
+            else:
+                reward = random_reward(self.streak, self.crafting_level)
             if reward:
                 self.rewards_repo.create(reward)
                 self.rewards_counter += 1
-                self.show_tooltip(reward)                
+                self.show_tooltip(reward)
 
         else:
             self.streak = 0

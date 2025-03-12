@@ -31,7 +31,7 @@ from . import interpolation
 
 __all__ = (
   'Loader', 'IniheritMixin', 'RawConfigParser',
-  'ConfigParser', 'SafeConfigParser',
+  'ConfigParser',
   'DEFAULT_INHERITTAG',
 )
 
@@ -39,7 +39,6 @@ __all__ = (
 
 _real_RawConfigParser  = CP.RawConfigParser
 _real_ConfigParser     = CP.ConfigParser
-_real_SafeConfigParser = CP.SafeConfigParser
 
 DEFAULT_INHERITTAG = '%inherit'
 
@@ -239,11 +238,6 @@ class ConfigParser(RawConfigParser, _real_ConfigParser):
     loader = kw.pop('loader', None)
     RawConfigParser.__init__(self, loader=loader)
     _real_ConfigParser.__init__(self, *args, **kw)
-class SafeConfigParser(ConfigParser, _real_SafeConfigParser):
-  def __init__(self, *args, **kw):
-    loader = kw.pop('loader', None)
-    ConfigParser.__init__(self, loader=loader)
-    _real_SafeConfigParser.__init__(self, *args, **kw)
 
 
 #------------------------------------------------------------------------------
