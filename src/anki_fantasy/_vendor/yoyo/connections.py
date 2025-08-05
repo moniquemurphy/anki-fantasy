@@ -20,28 +20,12 @@ from urllib.parse import urlencode
 from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
-from .migrations import default_migration_table
-from .backends import PostgresqlBackend
-from .backends import SQLiteBackend
-from .backends import ODBCBackend
-from .backends import OracleBackend
-from .backends import MySQLBackend
-from .backends import MySQLdbBackend
-
-BACKENDS = {
-    "odbc": ODBCBackend,
-    "oracle": OracleBackend,
-    "postgresql": PostgresqlBackend,
-    "postgres": PostgresqlBackend,
-    "psql": PostgresqlBackend,
-    "mysql": MySQLBackend,
-    "mysql+mysqldb": MySQLdbBackend,
-    "sqlite": SQLiteBackend,
-}
+from yoyo.backends import get_backend_class
+from yoyo.migrations import default_migration_table
 
 
 _DatabaseURI = namedtuple(
-    "_DatabaseURI", "scheme username password hostname port database " "args"
+    "_DatabaseURI", "scheme username password hostname port database args"
 )
 
 
@@ -56,7 +40,9 @@ class DatabaseURI(_DatabaseURI):
 
         if self.username:
             return "{}:{}@{}".format(
-                quote(self.username), quote(self.password or ""), hostpart
+                quote(self.username, safe=""),
+                quote(self.password or "", safe=""),
+                hostpart,
             )
         else:
             return hostpart
@@ -85,12 +71,18 @@ def get_backend(uri, migration_table=default_migration_table):
     """
     parsed = parse_uri(uri)
     try:
-        backend_class = BACKENDS[parsed.scheme.lower()]
+        backend_class = get_backend_class(parsed.scheme.lower())
     except KeyError:
         raise BadConnectionURI(
             "Unrecognised database connection scheme %r" % parsed.scheme
         )
-    return backend_class(parsed, migration_table)
+    
+    try:
+        backend = backend_class(parsed, migration_table)
+    except TypeError:
+        raise Exception(backend_class)
+    backend.init_database()
+    return backend
 
 
 def parse_uri(s):
@@ -111,12 +103,8 @@ def parse_uri(s):
 
     return DatabaseURI(
         scheme=result.scheme,
-        username=(
-            unquote(result.username) if result.username is not None else None
-        ),
-        password=(
-            unquote(result.password) if result.password is not None else None
-        ),
+        username=(unquote(result.username) if result.username is not None else None),
+        password=(unquote(result.password) if result.password is not None else None),
         hostname=result.hostname,
         port=result.port,
         database=result.path[1:] if result.path else None,

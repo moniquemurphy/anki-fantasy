@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright (C) 2009-2018 the sqlparse authors and contributors
+# Copyright (C) 2009-2020 the sqlparse authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of python-sqlparse and is released under
@@ -9,16 +8,16 @@
 """Parse SQL statements."""
 
 # Setup namespace
-from . import sql
-from . import engine
-from . import tokens
-from . import filters
-from . import formatter
+from sqlparse import sql
+from sqlparse import cli
+from sqlparse import engine
+from sqlparse import tokens
+from sqlparse import filters
+from sqlparse import formatter
 
-from .compat import text_type
 
-__version__ = '0.3.0'
-__all__ = ['engine', 'filters', 'formatter', 'sql', 'tokens']
+__version__ = '0.5.3'
+__all__ = ['engine', 'filters', 'formatter', 'sql', 'tokens', 'cli']
 
 
 def parse(sql, encoding=None):
@@ -57,15 +56,17 @@ def format(sql, encoding=None, **options):
     options = formatter.validate_options(options)
     stack = formatter.build_filter_stack(stack, options)
     stack.postprocess.append(filters.SerializerUnicode())
-    return u''.join(stack.run(sql, encoding))
+    return ''.join(stack.run(sql, encoding))
 
 
-def split(sql, encoding=None):
+def split(sql, encoding=None, strip_semicolon=False):
     """Split *sql* into single statements.
 
     :param sql: A string containing one or more SQL statements.
     :param encoding: The encoding of the statement (optional).
+    :param strip_semicolon: If True, remove trainling semicolons
+        (default: False).
     :returns: A list of strings.
     """
-    stack = engine.FilterStack()
-    return [text_type(stmt).strip() for stmt in stack.run(sql, encoding)]
+    stack = engine.FilterStack(strip_semicolon=strip_semicolon)
+    return [str(stmt).strip() for stmt in stack.run(sql, encoding)]

@@ -1,14 +1,13 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright (C) 2009-2018 the sqlparse authors and contributors
+# Copyright (C) 2009-2020 the sqlparse authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of python-sqlparse and is released under
 # the BSD License: https://opensource.org/licenses/BSD-3-Clause
 
-from .. import sql
-from .. import tokens as T
-from ..utils import recurse, imt
+from sqlparse import sql
+from sqlparse import tokens as T
+from sqlparse.utils import recurse, imt
 
 T_NUMERICAL = (T.Number, T.Number.Integer, T.Number.Float)
 T_STRING = (T.String, T.String.Single, T.String.Symbol)
@@ -88,9 +87,64 @@ def group_typecasts(tlist):
     _group(tlist, sql.Identifier, match, valid_prev, valid_next, post)
 
 
+def group_tzcasts(tlist):
+    def match(token):
+        return token.ttype == T.Keyword.TZCast
+
+    def valid_prev(token):
+        return token is not None
+
+    def valid_next(token):
+        return token is not None and (
+            token.is_whitespace
+            or token.match(T.Keyword, 'AS')
+            or token.match(*sql.TypedLiteral.M_CLOSE)
+        )
+
+    def post(tlist, pidx, tidx, nidx):
+        return pidx, nidx
+
+    _group(tlist, sql.Identifier, match, valid_prev, valid_next, post)
+
+
+def group_typed_literal(tlist):
+    # definitely not complete, see e.g.:
+    # https://docs.microsoft.com/en-us/sql/odbc/reference/appendixes/interval-literal-syntax
+    # https://docs.microsoft.com/en-us/sql/odbc/reference/appendixes/interval-literals
+    # https://www.postgresql.org/docs/9.1/datatype-datetime.html
+    # https://www.postgresql.org/docs/9.1/functions-datetime.html
+    def match(token):
+        return imt(token, m=sql.TypedLiteral.M_OPEN)
+
+    def match_to_extend(token):
+        return isinstance(token, sql.TypedLiteral)
+
+    def valid_prev(token):
+        return token is not None
+
+    def valid_next(token):
+        return token is not None and token.match(*sql.TypedLiteral.M_CLOSE)
+
+    def valid_final(token):
+        return token is not None and token.match(*sql.TypedLiteral.M_EXTEND)
+
+    def post(tlist, pidx, tidx, nidx):
+        return tidx, nidx
+
+    _group(tlist, sql.TypedLiteral, match, valid_prev, valid_next,
+           post, extend=False)
+    _group(tlist, sql.TypedLiteral, match_to_extend, valid_prev, valid_final,
+           post, extend=True)
+
+
 def group_period(tlist):
     def match(token):
-        return token.match(T.Punctuation, '.')
+        for ttype, value in ((T.Punctuation, '.'),
+                             (T.Operator, '->'),
+                             (T.Operator, '->>')):
+            if token.match(ttype, value):
+                return True
+        return False
 
     def valid_prev(token):
         sqlcls = sql.SquareBrackets, sql.Identifier
@@ -104,7 +158,7 @@ def group_period(tlist):
     def post(tlist, pidx, tidx, nidx):
         # next_ validation is being performed here. issue261
         sqlcls = sql.SquareBrackets, sql.Function
-        ttypes = T.Name, T.String.Symbol, T.Wildcard
+        ttypes = T.Name, T.String.Symbol, T.Wildcard, T.String.Single
         next_ = tlist[nidx] if nidx is not None else None
         valid_next = imt(next_, i=sqlcls, t=ttypes)
 
@@ -121,7 +175,7 @@ def group_as(tlist):
         return token.normalized == 'NULL' or not token.is_keyword
 
     def valid_next(token):
-        ttypes = T.DML, T.DDL
+        ttypes = T.DML, T.DDL, T.CTE
         return not imt(token, t=ttypes) and token is not None
 
     def post(tlist, pidx, tidx, nidx):
@@ -135,7 +189,7 @@ def group_assignment(tlist):
         return token.match(T.Assignment, ':=')
 
     def valid(token):
-        return token is not None and token.ttype not in (T.Keyword)
+        return token is not None and token.ttype not in (T.Keyword,)
 
     def post(tlist, pidx, tidx, nidx):
         m_semicolon = T.Punctuation, ';'
@@ -149,7 +203,7 @@ def group_assignment(tlist):
 
 def group_comparison(tlist):
     sqlcls = (sql.Parenthesis, sql.Function, sql.Identifier,
-              sql.Operation)
+              sql.Operation, sql.TypedLiteral)
     ttypes = T_NUMERICAL + T_STRING + T_NAME
 
     def match(token):
@@ -181,6 +235,16 @@ def group_identifier(tlist):
         tidx, token = tlist.token_next_by(t=ttypes, idx=tidx)
 
 
+@recurse(sql.Over)
+def group_over(tlist):
+    tidx, token = tlist.token_next_by(m=sql.Over.M_OPEN)
+    while token:
+        nidx, next_ = tlist.token_next(tidx)
+        if imt(next_, i=sql.Parenthesis, t=T.Name):
+            tlist.group_tokens(sql.Over, tidx, nidx)
+        tidx, token = tlist.token_next_by(m=sql.Over.M_OPEN, idx=tidx)
+
+
 def group_arrays(tlist):
     sqlcls = sql.SquareBrackets, sql.Identifier, sql.Function
     ttypes = T.Name, T.String.Symbol
@@ -204,13 +268,16 @@ def group_arrays(tlist):
 def group_operator(tlist):
     ttypes = T_NUMERICAL + T_STRING + T_NAME
     sqlcls = (sql.SquareBrackets, sql.Parenthesis, sql.Function,
-              sql.Identifier, sql.Operation)
+              sql.Identifier, sql.Operation, sql.TypedLiteral)
 
     def match(token):
         return imt(token, t=(T.Operator, T.Wildcard))
 
     def valid(token):
-        return imt(token, i=sqlcls, t=ttypes)
+        return imt(token, i=sqlcls, t=ttypes) \
+            or (token and token.match(
+                T.Keyword,
+                ('CURRENT_DATE', 'CURRENT_TIME', 'CURRENT_TIMESTAMP')))
 
     def post(tlist, pidx, tidx, nidx):
         tlist[tidx].ttype = T.Operator
@@ -247,7 +314,7 @@ def group_comments(tlist):
     tidx, token = tlist.token_next_by(t=T.Comment)
     while token:
         eidx, end = tlist.token_not_matching(
-            lambda tk: imt(tk, t=T.Comment) or tk.is_whitespace, idx=tidx)
+            lambda tk: imt(tk, t=T.Comment) or tk.is_newline, idx=tidx)
         if end is not None:
             eidx, end = tlist.token_prev(eidx, skip_ws=False)
             tlist.group_tokens(sql.Comment, tidx, eidx)
@@ -289,22 +356,31 @@ def group_aliased(tlist):
 def group_functions(tlist):
     has_create = False
     has_table = False
+    has_as = False
     for tmp_token in tlist.tokens:
-        if tmp_token.value == 'CREATE':
+        if tmp_token.value.upper() == 'CREATE':
             has_create = True
-        if tmp_token.value == 'TABLE':
+        if tmp_token.value.upper() == 'TABLE':
             has_table = True
-    if has_create and has_table:
+        if tmp_token.value == 'AS':
+            has_as = True
+    if has_create and has_table and not has_as:
         return
 
     tidx, token = tlist.token_next_by(t=T.Name)
     while token:
         nidx, next_ = tlist.token_next(tidx)
         if isinstance(next_, sql.Parenthesis):
-            tlist.group_tokens(sql.Function, tidx, nidx)
+            over_idx, over = tlist.token_next(nidx)
+            if over and isinstance(over, sql.Over):
+                eidx = over_idx
+            else:
+                eidx = nidx
+            tlist.group_tokens(sql.Function, tidx, eidx)
         tidx, token = tlist.token_next_by(t=T.Name, idx=tidx)
 
 
+@recurse(sql.Identifier)
 def group_order(tlist):
     """Group together Identifier and Asc/Desc token"""
     tidx, token = tlist.token_next_by(t=T.Keyword.Order)
@@ -351,6 +427,7 @@ def group(stmt):
         group_for,
         group_begin,
 
+        group_over,
         group_functions,
         group_where,
         group_period,
@@ -358,6 +435,8 @@ def group(stmt):
         group_identifier,
         group_order,
         group_typecasts,
+        group_tzcasts,
+        group_typed_literal,
         group_operator,
         group_comparison,
         group_as,
@@ -385,6 +464,8 @@ def _group(tlist, cls, match,
     pidx, prev_ = None, None
     for idx, token in enumerate(list(tlist)):
         tidx = idx - tidx_offset
+        if tidx < 0:  # tidx shouldn't get negative
+            continue
 
         if token.is_whitespace:
             continue

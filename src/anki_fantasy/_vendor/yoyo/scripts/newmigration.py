@@ -25,12 +25,10 @@ import subprocess
 import sys
 import traceback
 
-from ...text_unidecode import unidecode
-
-from .. import default_migration_table
-from ..config import CONFIG_NEW_MIGRATION_COMMAND_KEY
-from ..migrations import read_migrations, heads, Migration
-from .. import utils
+from yoyo import default_migration_table
+from yoyo.config import CONFIG_NEW_MIGRATION_COMMAND_KEY
+from yoyo.migrations import read_migrations, heads, Migration
+from yoyo import utils
 from .main import InvalidArgument
 
 from os import path, stat, unlink, rename
@@ -45,7 +43,7 @@ migration_template = dedent(
     {message}
     """
 
-    from ._vendor.yoyo import step
+    from yoyo import step
 
     __depends__ = {{{depends}}}
 
@@ -91,8 +89,7 @@ def install_argparsers(global_parser, subparsers):
     )
 
 
-def new_migration(args, config):
-
+def new_migration(args, config) -> int:
     try:
         directory = args.sources[0]
     except IndexError:
@@ -103,11 +100,11 @@ def new_migration(args, config):
     depends = sorted(heads(migrations), key=lambda m: m.id)
     if args.sql:
         template = migration_sql_template
-        depends = "  ".join(m.id for m in depends)
+        depends_str = "  ".join(m.id for m in depends)
     else:
         template = migration_template
-        depends = ", ".join("{!r}".format(m.id) for m in depends)
-    migration_source = template.format(message=message, depends=depends)
+        depends_str = ", ".join("{!r}".format(m.id) for m in depends)
+    migration_source = template.format(message=message, depends=depends_str)
 
     extension = ".sql" if args.sql else ".py"
     if args.batch_mode:
@@ -117,7 +114,7 @@ def new_migration(args, config):
     else:
         p = create_with_editor(config, directory, migration_source, extension)
         if p is None:
-            return
+            return 1
 
     try:
         command = config.get("DEFAULT", CONFIG_NEW_MIGRATION_COMMAND_KEY)
@@ -128,18 +125,19 @@ def new_migration(args, config):
         pass
 
     print("Created file", p)
+    return 0
 
 
 def slugify(message):
-    s = unidecode(message)
+    s = utils.unidecode(message)
     s = re.sub(re.compile(r"[^-a-z0-9]+"), "-", s.lower())
     s = re.compile(r"-{2,}").sub("-", s).strip("-")
     return s
 
 
 def make_filename(config, directory, message, extension):
-    lines = (l.strip() for l in message.split("\n"))
-    lines = (l for l in lines if l)
+    lines = (line.strip() for line in message.split("\n"))
+    lines = (line for line in lines if line)
     message = next(lines, None)
 
     if message:
@@ -166,17 +164,23 @@ def make_filename(config, directory, message, extension):
             continue
 
     return path.join(
-        directory, f"{prefix}{datestr}_{number}_{rand}{slug}{extension}"
+        directory,
+        "{}{}_{}_{}{}{}".format(prefix, datestr, number, rand, slug, extension),
     )
 
 
 def create_with_editor(config, directory, migration_source, extension):
     editor = utils.get_editor(config)
     tmpfile = NamedTemporaryFile(
-        dir=directory, prefix=tempfile_prefix, suffix=".py", delete=False
+        mode="w",
+        encoding="UTF-8",
+        dir=directory,
+        prefix=tempfile_prefix,
+        suffix=extension,
+        delete=False,
     )
     try:
-        with io.open(tmpfile.name, "w", encoding="UTF-8") as f:
+        with tmpfile as f:
             f.write(migration_source)
 
         editor = [part.format(tmpfile.name) for part in shlex.split(editor)]
@@ -196,7 +200,7 @@ def create_with_editor(config, directory, migration_source, extension):
                     return None
 
             try:
-                migration = Migration(None, tmpfile.name)
+                migration = Migration(None, tmpfile.name, None)
                 migration.load()
                 message = getattr(migration.module, "__doc__", "")
                 break

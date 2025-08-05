@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright (C) 2009-2018 the sqlparse authors and contributors
+# Copyright (C) 2009-2020 the sqlparse authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of python-sqlparse and is released under
@@ -10,7 +9,6 @@ import itertools
 import re
 from collections import deque
 from contextlib import contextmanager
-from .compat import text_type
 
 # This regular expression replaces the home-cooked parser that was here before.
 # It is much faster, but requires an extra post-processing step to get the
@@ -40,7 +38,7 @@ def split_unquoted_newlines(stmt):
 
     Unlike str.splitlines(), this will ignore CR/LF/CR+LF if the requisite
     character is inside of a string."""
-    text = text_type(stmt)
+    text = str(stmt)
     lines = SPLIT_REGEX.split(text)
     outputlines = ['']
     for line in lines:
@@ -57,7 +55,7 @@ def remove_quotes(val):
     """Helper that removes surrounding quotes from strings."""
     if val is None:
         return
-    if val[0] in ('"', "'") and val[0] == val[-1]:
+    if val[0] in ('"', "'", '`') and val[0] == val[-1]:
         val = val[1:-1]
     return val
 
@@ -88,20 +86,23 @@ def imt(token, i=None, m=None, t=None):
     :param t: TokenType or Tuple/List of TokenTypes
     :return:  bool
     """
-    clss = i
-    types = [t, ] if t and not isinstance(t, list) else t
-    mpatterns = [m, ] if m and not isinstance(m, list) else m
-
     if token is None:
         return False
-    elif clss and isinstance(token, clss):
+    if i and isinstance(token, i):
         return True
-    elif mpatterns and any(token.match(*pattern) for pattern in mpatterns):
-        return True
-    elif types and any(token.ttype in ttype for ttype in types):
-        return True
-    else:
-        return False
+    if m:
+        if isinstance(m, list):
+            if any(token.match(*pattern) for pattern in m):
+                return True
+        elif token.match(*m):
+            return True
+    if t:
+        if isinstance(t, list):
+            if any(token.ttype in ttype for ttype in t):
+                return True
+        elif token.ttype in t:
+            return True
+    return False
 
 
 def consume(iterator, n):

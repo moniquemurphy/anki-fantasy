@@ -13,17 +13,30 @@
 # limitations under the License.
 
 from itertools import count
+from collections import abc
 import configparser
 import os
 import random
 import re
 import string
 import sys
+import unicodedata
+import typing as t
 
-from .config import CONFIG_EDITOR_KEY
+from yoyo.config import CONFIG_EDITOR_KEY
 
 try:
     import termios
+
+except ImportError:
+    try:
+        from msvcrt import getwch as getch  # type: ignore
+    except ImportError:
+        # some non Windows environments don't have termios (google cloud)
+        # running yoyo through the python sdk should not require `getch`
+        pass
+
+else:
 
     def getch():
         """
@@ -34,9 +47,9 @@ try:
         saved_attributes = termios.tcgetattr(fd)
         try:
             attributes = termios.tcgetattr(fd)  # get a fresh copy!
-            attributes[3] = attributes[3] & ~(termios.ICANON | termios.ECHO)
-            attributes[6][termios.VMIN] = 1
-            attributes[6][termios.VTIME] = 0
+            attributes[3] = attributes[3] & ~(termios.ICANON | termios.ECHO)  # type: ignore  # noqa: E501
+            attributes[6][termios.VMIN] = 1  # type: ignore
+            attributes[6][termios.VTIME] = 0  # type: ignore
             termios.tcsetattr(fd, termios.TCSANOW, attributes)
 
             a = sys.stdin.read(1)
@@ -44,15 +57,6 @@ try:
             # be sure to reset the attributes no matter what!
             termios.tcsetattr(fd, termios.TCSANOW, saved_attributes)
         return a
-
-
-except ImportError:
-    try:
-        from msvcrt import getwch as getch
-    except ImportError:
-        # some non Windows environments don't have termios (google cloud)
-        # running yoyo through the python sdk should not require `getch`
-        pass
 
 
 def prompt(prompt, options):
@@ -66,8 +70,7 @@ def prompt(prompt, options):
         ch = getch()
         if ch == os.linesep:
             ch = (
-                [o.lower() for o in options if "A" <= o <= "Z"]
-                + list(options.lower())
+                [o.lower() for o in options if "A" <= o <= "Z"] + list(options.lower())
             )[0]
         print(ch)
         if ch.lower() not in options.lower():
@@ -124,27 +127,45 @@ def get_random_string(length, chars=(string.ascii_letters + string.digits)):
     return "".join(rng.choice(chars) for i in range(length))
 
 
-def change_param_style(target_style, sql, bind_parameters):
+def change_param_style(
+    target_style: str,
+    sql: str,
+    bind_parameters: t.Optional[abc.Mapping[str, t.Any]]
+) -> tuple[str, t.Union[abc.Mapping[str, t.Any], abc.Sequence[str]]]:
     """
     :param target_style: A DBAPI paramstyle value (eg 'qmark', 'format', etc)
     :param sql: An SQL str
-    :bind_parameters: A dict of bind parameters for the query
+    :param bind_parameters: A dict of bind parameters for the query
 
     :return: tuple of `(sql, bind_parameters)`. ``sql`` will be rewritten with
              the target paramstyle; ``bind_parameters`` will be a tuple or
              dict as required.
     """
     if target_style == "named":
-        return sql, bind_parameters
+        return sql, bind_parameters or {}
     positional = target_style in {"qmark", "numeric", "format"}
     if not bind_parameters:
         return (sql, (tuple() if positional else {}))
 
+    _param_counter = count(1)
+
+    def param_gen_qmark(name):
+        return "?"
+
+    def param_gen_numeric(name):
+        return f":{next(_param_counter)}"
+
+    def param_gen_format(name):
+        return "%s"
+
+    def param_gen_pyformat(name):
+        return f"%({name})s"
+
     param_gen = {
-        "qmark": lambda name: "?",
-        "numeric": lambda name, c=count(1): ":{}".format(next(c)),
-        "format": lambda name: "%s",
-        "pyformat": lambda name: "%({})s".format(name),
+        "qmark": param_gen_qmark,
+        "numeric": param_gen_numeric,
+        "format": param_gen_format,
+        "pyformat": param_gen_pyformat,
     }[target_style]
 
     pattern = re.compile(
@@ -167,3 +188,11 @@ def change_param_style(target_style, sql, bind_parameters):
             positional_params.append(bind_parameters[param_name])
         return transformed_sql, tuple(positional_params)
     return transformed_sql, bind_parameters
+
+
+def unidecode(s: str) -> str:
+    """
+    Return ``s`` with unicode diacritics removed.
+    """
+    combining = unicodedata.combining
+    return "".join(c for c in unicodedata.normalize("NFD", s) if not combining(c))

@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright (C) 2009-2018 the sqlparse authors and contributors
+# Copyright (C) 2009-2020 the sqlparse authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of python-sqlparse and is released under
@@ -20,6 +19,9 @@ class _TokenType(tuple):
         return item is not None and (self is item or item[:len(self)] == self)
 
     def __getattr__(self, name):
+        # don't mess with dunder
+        if name.startswith('__'):
+            return super().__getattr__(self, name)
         new = _TokenType(self + (name,))
         setattr(self, name, new)
         new.parent = self

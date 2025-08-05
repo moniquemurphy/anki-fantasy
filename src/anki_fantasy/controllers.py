@@ -8,14 +8,18 @@ The goal of these controller classes is to have these be the only objects that
 hold state in the add-on. The other classes ideally should be immutable.
 This pattern has worked alright so far for this simple application.
 """
+import sys
+import os
 import sqlite3
 from functools import wraps, partial
 from os.path import join, dirname
 from pathlib import Path
+from .consts import addon_path
+sys.path.insert(0, os.path.join(addon_path, "_vendor"))
 
-from ._vendor.yoyo import get_backend
-from ._vendor.yoyo import read_migrations
-from ._vendor.yoyo.exceptions import LockTimeout
+from yoyo import get_backend
+from yoyo import read_migrations
+from yoyo.exceptions import LockTimeout
 
 from aqt import mw
 from .libaddon.platform import PATH_THIS_ADDON

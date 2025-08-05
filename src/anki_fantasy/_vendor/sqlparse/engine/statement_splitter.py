@@ -1,15 +1,14 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright (C) 2009-2018 the sqlparse authors and contributors
+# Copyright (C) 2009-2020 the sqlparse authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of python-sqlparse and is released under
 # the BSD License: https://opensource.org/licenses/BSD-3-Clause
 
-from .. import sql, tokens as T
+from sqlparse import sql, tokens as T
 
 
-class StatementSplitter(object):
+class StatementSplitter:
     """Filter that split stream at individual statements"""
 
     def __init__(self):
@@ -18,6 +17,7 @@ class StatementSplitter(object):
     def _reset(self):
         """Set the filter attributes to its default values"""
         self._in_declare = False
+        self._in_case = False
         self._is_create = False
         self._begin_depth = 0
 
@@ -27,11 +27,13 @@ class StatementSplitter(object):
 
     def _change_splitlevel(self, ttype, value):
         """Get the new split level (increase, decrease or remain equal)"""
-        # ANSI
-        # if normal token return
-        # wouldn't parenthesis increase/decrease a level?
-        # no, inside a parenthesis can't start new statement
-        if ttype not in T.Keyword:
+
+        # parenthesis increase/decrease a level
+        if ttype is T.Punctuation and value == '(':
+            return 1
+        elif ttype is T.Punctuation and value == ')':
+            return -1
+        elif ttype not in T.Keyword:  # if normal token return
             return 0
 
         # Everything after here is ttype = T.Keyword
@@ -53,20 +55,22 @@ class StatementSplitter(object):
         if unified == 'BEGIN':
             self._begin_depth += 1
             if self._is_create:
-                # FIXME(andi): This makes no sense.
+                # FIXME(andi): This makes no sense.  ## this comment neither
                 return 1
             return 0
 
-        # Should this respect a preceding BEGIN?
-        # In CASE ... WHEN ... END this results in a split level -1.
-        # Would having multiple CASE WHEN END and a Assignment Operator
-        # cause the statement to cut off prematurely?
+        # BEGIN and CASE/WHEN both end with END
         if unified == 'END':
-            self._begin_depth = max(0, self._begin_depth - 1)
+            if not self._in_case:
+                self._begin_depth = max(0, self._begin_depth - 1)
+            else:
+                self._in_case = False
             return -1
 
-        if (unified in ('IF', 'FOR', 'WHILE')
+        if (unified in ('IF', 'FOR', 'WHILE', 'CASE')
                 and self._is_create and self._begin_depth > 0):
+            if unified == 'CASE':
+                self._in_case = True
             return 1
 
         if unified in ('END IF', 'END FOR', 'END WHILE'):
@@ -98,9 +102,14 @@ class StatementSplitter(object):
             self.tokens.append(sql.Token(ttype, value))
 
             # Check if we get the end of a statement
-            if self.level <= 0 and ttype is T.Punctuation and value == ';':
+            # Issue762: Allow GO (or "GO 2") as statement splitter.
+            # When implementing a language toggle, it's not only to add
+            # keywords it's also to change some rules, like this splitting
+            # rule.
+            if (self.level <= 0 and ttype is T.Punctuation and value == ';') \
+                    or (ttype is T.Keyword and value.split()[0] == 'GO'):
                 self.consume_ws = True
 
         # Yield pending statement (if any)
-        if self.tokens:
+        if self.tokens and not all(t.is_whitespace for t in self.tokens):
             yield sql.Statement(self.tokens)

@@ -24,14 +24,14 @@ __all__ = [
     "transaction",
 ]
 
-from .connections import get_backend
-from .migrations import ancestors
-from .migrations import default_migration_table
-from .migrations import descendants
-from .migrations import group
-from .migrations import logger
-from .migrations import read_migrations
-from .migrations import step
-from .migrations import transaction
+from yoyo.connections import get_backend
+from yoyo.migrations import ancestors
+from yoyo.migrations import default_migration_table
+from yoyo.migrations import descendants
+from yoyo.migrations import group
+from yoyo.migrations import logger
+from yoyo.migrations import read_migrations
+from yoyo.migrations import step
+from yoyo.migrations import transaction
 
-__version__ = "7.0.0"
+__version__ = "9.0.0"

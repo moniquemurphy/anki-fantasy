@@ -31,11 +31,17 @@
 #
 # Any modifications to this file must keep this entire header intact.
 
+import sys
+import os
+from ._version import __version__
+
 """
 Addon-wide constants
 """
 
-from ._version import __version__
+addon_path = os.path.dirname(__file__)
+
+
 
 __all__ = ["ADDON"]
 
