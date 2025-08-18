@@ -26,13 +26,17 @@ from aqt.qt import (
     QLineEdit,
     QVariant,
     QSizePolicy,
+    pyqtSlot
 )
 
 from aqt import mw
 from pathlib import Path
+from functools import lru_cache
 
 from aqt import QMenu, mw
 from .libaddon.platform import PATH_THIS_ADDON
+
+import functools
 
 DEBUG_MODE = True
 from .gui.notification import Notification
@@ -58,38 +62,38 @@ def show_tooltip(text):
 
     notification.show()
 
+open_dialogs = {}
 
-def show_dialog(parent, rewards_repo, dialog):
-    if dialog == "inventory":
+def show_dialog(parent, rewards_repo, dialog_name):
+    if dialog_name in open_dialogs and open_dialogs[dialog_name].isVisible():
+        open_dialogs[dialog_name].raise_()
+        open_dialogs[dialog_name].activateWindow()
+        return
+    
+    if dialog_name == "inventory":
         dialog = InventoryDialog(
             parent,
             rewards_repo=rewards_repo,
         )
-        if hasattr(dialog, "exec_"):
-            dialog.exec_()
-        else:
-            dialog.exec()
-
-    if dialog == "crafting":
+    elif dialog_name == "crafting":
         dialog = CraftingDialog(
             parent,
             rewards_repo=rewards_repo,
         )
-        if hasattr(dialog, "exec_"):
-            dialog.exec_()
-        else:
-            dialog.exec()
-
-    if dialog == "progress":
+    elif dialog_name == "progress":
         dialog = ProgressDialog(
             parent,
             rewards_repo=rewards_repo,
         )
-        if hasattr(dialog, "exec_"):
-            dialog.exec_()
-        else:
-            dialog.exec()
-
+    else:
+        return
+    
+    open_dialogs[dialog_name] = dialog
+    dialog.show()
+        # if hasattr(dialog, "exec_"):
+        #     dialog.exec_()
+        # else:
+        #     dialog.exec()
 
 def get_rgb_from_hex(code):
     code_hex = code.replace("#", "")
@@ -348,12 +352,13 @@ class ProgressDialog(QDialog):
                 all_complete_bool = all_complete_bool and False
         return all_complete_bool
 
+    @pyqtSlot()
     def next_level_button_clicked(self):
         button = self.sender()
         if button:
             self.rewards_repo.update_crafting_level()
             self.close()
-            show_dialog(self.parent, self.rewards_repo, dialog="progress")
+            show_dialog(self.parent, self.rewards_repo, dialo_nameg="progress")
 
 class CraftingDialog(QDialog):
     def __init__(self, parent, rewards_repo):
@@ -364,6 +369,11 @@ class CraftingDialog(QDialog):
 
         self.crafting_level = self.rewards_repo.get_crafting_level()
         self.current_recipes = get_alphabetized_recipes_by_level(self.crafting_level)
+        self.ingredient_to_rows = {}
+
+        for i, recipe in enumerate(self.current_recipes):
+            for ingredient in recipe["ingredients"]:
+                self.ingredient_to_rows.setdefault(ingredient, set()).add(i)
 
         self.table = QTableWidget()
         self.table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
@@ -458,18 +468,92 @@ class CraftingDialog(QDialog):
 
         return craftable
 
+    @pyqtSlot()
     def button_clicked(self):
         button = self.sender()
         if button:
             row = self.table.indexAt(button.pos()).row()
+            recipe = self.current_recipes[row]
+            crafted_item_name = recipe["item_name"]
+
+            # Craft item
             item = self.table.item(row, 2).text()
             self.rewards_repo.craft_item(self.search_recipes(item))
-            self.populate_crafting_table()
-            # self.close()
-            # show_dialog(self.parent, self.rewards_repo, dialog="crafting")
+
+            # Update initial item's row
+            self.update_row(row)
+
+            # Update rows of other items that use that ingredient or that have that crafted item as an ingredient
+            # (to avoid repopulating the whole table every time, which is overkill)
+
+            affected_ingredients = list(recipe["ingredients"].keys())
+            self.update_rows_by_item_names(affected_ingredients)
+
+            affected_rows = self.get_recipe_rows_using_ingredient(crafted_item_name)
+            for r in affected_rows:
+                if r != row:
+                    self.update_row(r)
 
     def search_recipes(self, search_term):
         return next(filter(lambda item: item["item_name"] == search_term, RECIPES))
+    
+    def update_rows_by_item_names(self, item_names):
+        updated = set()
+        for name in item_names:
+            for row in self.ingredient_to_rows.get(name, []):
+                if row not in updated:
+                    self.update_row(row)
+                    updated.add(row)
+        # for i, recipe in enumerate(self.current_recipes):
+        #     for ingredient in item_names:
+        #         if ingredient in recipe["ingredients"]:
+        #             self.update_row(i)
+        #             break
+
+    def get_recipe_rows_using_ingredient(self, ingredient_name):
+        rows = []
+        for i, recipe in enumerate(self.current_recipes):
+            if ingredient_name in recipe["ingredients"]:
+                rows.append(i)
+        return rows
+
+    def update_row(self, row_index):
+        recipe = self.current_recipes[row_index]
+        image_path = Path(PATH_THIS_ADDON) / recipe["image_path"]
+        is_key_item = recipe["key_item"][self.crafting_level]
+
+        key_item = QTableWidgetItem("\U0001F31F" if is_key_item else "")
+        item_image = QTableWidgetItem()
+        item_image.setIcon(QIcon(QPixmap(str(image_path)).scaled(72, 72)))
+                           
+        item_name = QTableWidgetItem(recipe["item_name"])
+        ingredients_string = QTableWidgetItem(self.craft_ingredients_string(recipe))
+        number_owned = QTableWidgetItem(str(self.rewards_repo.count_item(recipe["item_name"])))
+
+        if is_key_item and self.rewards_repo.count_item(recipe["item_name"]) >= 1:
+            key_item.setBackground(get_rgb_from_hex("#009933"))
+
+        missing_string = QTableWidgetItem(self.rewards_repo.missing_ingredients(recipe))
+
+        if not self.is_craftable(self.rewards_repo, recipe):
+            craftable_cell = QTableWidgetItem("No")
+            craftable_cell.setBackground(get_rgb_from_hex("#FF0000"))
+            self.table.removeCellWidget(row_index, 7)
+        else:
+            craftable_cell = QTableWidgetItem("Yes")
+            craftable_cell.setBackground(get_rgb_from_hex("#009933"))
+            craft_button = QPushButton("Craft!")
+            craft_button.clicked.connect(self.button_clicked)
+            self.table.setCellWidget(row_index, 7, craft_button)
+
+        self.table.setItem(row_index, 0, key_item)
+        self.table.setItem(row_index, 1, item_image)
+        self.table.setItem(row_index, 2, item_name)
+        self.table.setItem(row_index, 3, ingredients_string)
+        self.table.setItem(row_index, 4, number_owned)
+        self.table.setItem(row_index, 5, craftable_cell)
+        self.table.setItem(row_index, 6, missing_string)
+
 
 def connect_menu(main_window, profile_controller):
     global top_menu
@@ -478,21 +562,21 @@ def connect_menu(main_window, profile_controller):
     inventory_action = top_menu.addAction("&Inventory")
     inventory_action.triggered.connect(
         lambda: show_dialog(
-            main_window, profile_controller.get_rewards_repo(), dialog="inventory"
+            main_window, profile_controller.get_rewards_repo(), dialog_name="inventory"
         )
     )
 
     anki_fantasy_action = top_menu.addAction("&Craft")
     anki_fantasy_action.triggered.connect(
         lambda: show_dialog(
-            main_window, profile_controller.get_rewards_repo(), dialog="crafting"
+            main_window, profile_controller.get_rewards_repo(), dialog_name="crafting"
         )
     )
 
     progress_action = top_menu.addAction("&Crafting Progress")
     progress_action.triggered.connect(
         lambda: show_dialog(
-            main_window, profile_controller.get_rewards_repo(), dialog="progress"
+            main_window, profile_controller.get_rewards_repo(), dialog_name="progress"
         )
     )
 
