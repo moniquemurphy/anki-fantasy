@@ -37,8 +37,17 @@ def _wrap_anki_objects(profile_controller):
         factory_function=profile_controller.get_reviewing_controller,
     )
 
-    Reviewer._answerCard = wrap(
-        Reviewer._answerCard,
+    # Reviewer._answerCard = wrap(
+    #     Reviewer._answerCard,
+    #     partial(
+    #         build_on_answer_wrapper,
+    #         on_answer=call_method_on_reviewing_controller("on_answer"),
+    #     ),
+    #     "before",
+    # )
+    
+    Reviewer._after_answering = wrap(
+        Reviewer._after_answering,
         partial(
             build_on_answer_wrapper,
             on_answer=call_method_on_reviewing_controller("on_answer"),
