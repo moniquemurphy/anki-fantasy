@@ -358,7 +358,7 @@ class ProgressDialog(QDialog):
         if button:
             self.rewards_repo.update_crafting_level()
             self.close()
-            show_dialog(self.parent, self.rewards_repo, dialo_nameg="progress")
+            show_dialog(self.parent, self.rewards_repo, dialog_name="progress")
 
 class CraftingDialog(QDialog):
     def __init__(self, parent, rewards_repo):
@@ -372,9 +372,11 @@ class CraftingDialog(QDialog):
         self.ingredient_to_rows = {}
 
         for i, recipe in enumerate(self.current_recipes):
+            # make sure to add the recipe name itself
+            self.ingredient_to_rows.setdefault(recipe["item_name"], set()).add(i)
             for ingredient in recipe["ingredients"]:
                 self.ingredient_to_rows.setdefault(ingredient, set()).add(i)
-
+            
         self.table = QTableWidget()
         self.table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         self.table.setGeometry(100, 60, 1200, 1000)
@@ -486,7 +488,7 @@ class CraftingDialog(QDialog):
             # Update rows of other items that use that ingredient or that have that crafted item as an ingredient
             # (to avoid repopulating the whole table every time, which is overkill)
 
-            affected_ingredients = list(recipe["ingredients"].keys())
+            affected_ingredients = recipe["ingredients"].keys()
             self.update_rows_by_item_names(affected_ingredients)
 
             affected_rows = self.get_recipe_rows_using_ingredient(crafted_item_name)
@@ -496,6 +498,13 @@ class CraftingDialog(QDialog):
 
     def search_recipes(self, search_term):
         return next(filter(lambda item: item["item_name"] == search_term, RECIPES))
+
+    def get_recipe_rows_using_ingredient(self, ingredient_name):
+        rows = []
+        for i, recipe in enumerate(self.current_recipes):
+            if ingredient_name in recipe["ingredients"]:
+                rows.append(i)
+        return rows
     
     def update_rows_by_item_names(self, item_names):
         updated = set()
@@ -504,18 +513,6 @@ class CraftingDialog(QDialog):
                 if row not in updated:
                     self.update_row(row)
                     updated.add(row)
-        # for i, recipe in enumerate(self.current_recipes):
-        #     for ingredient in item_names:
-        #         if ingredient in recipe["ingredients"]:
-        #             self.update_row(i)
-        #             break
-
-    def get_recipe_rows_using_ingredient(self, ingredient_name):
-        rows = []
-        for i, recipe in enumerate(self.current_recipes):
-            if ingredient_name in recipe["ingredients"]:
-                rows.append(i)
-        return rows
 
     def update_row(self, row_index):
         recipe = self.current_recipes[row_index]
