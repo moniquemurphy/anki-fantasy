@@ -26,7 +26,7 @@ Items required for the current level are displayed here. Hover for the item name
 ### Local Build
 If you'd like to develop and then build locally, check out this repository, make any changes you'd like to make, cd into `anki-fantasy/src/anki_fantasy` and run the following command:
 
-```zip -r anki_fantasy.addon ./*```.
+```zip -r anki_fantasy.ankiaddon ./*```.
 
 You can then double click that archive and it will open and load in Anki. You should delete the add-on before installing a different or new version from local.
 
