@@ -7,10 +7,12 @@ License: GNU AGPLv3 or later <https://www.gnu.org/licenses/agpl.html>
 import sys
 import os
 import sqlite3
+from aqt import gui_hooks
 from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
 from .consts import addon_path
+from .tally import SessionTallyWidget
 
 sys.path.insert(0, os.path.join(addon_path, "_vendor"))
 
@@ -183,6 +185,11 @@ class ReviewingController:
         self.streak = 0
         # Cached; call refresh_crafting_level() if it can change at runtime
         self.crafting_level = self.rewards_repo.get_crafting_level()
+        self.session_tally = {}
+        self.tally_widget = SessionTallyWidget(parent=mw)
+
+        gui_hooks.reviewer_will_end.append(self.hide_tally)
+        gui_hooks.reviewer_did_show_question.append(self.show_tally)
 
     def refresh_crafting_level(self):
         """Call this after update_crafting_level() to keep the cache current."""
@@ -198,9 +205,29 @@ class ReviewingController:
             if reward:
                 self.rewards_repo.create(reward)
                 self.rewards_counter += 1
+
+                # Update the tally for the session
+                if self._is_tally_enabled():
+                    item_name = reward["item_name"]
+                    self.session_tally[item_name] = self.session_tally.get(item_name, 0) + 1
+                    self.tally_widget.update_tally(item_name, self.session_tally[item_name], reward["image_path"])
+                    
+
                 self.show_tooltip(reward)
         else:
             self.streak = 0
+
+    def hide_tally(self):
+        self.tally_widget.hide()
+
+    def show_tally(self, card=None, *args, **kwargs):
+        if self.session_tally and self._is_tally_enabled():
+            self.tally_widget.show()
+
+    def _is_tally_enabled(self):
+        addon_name = __name__.split('.')[0]
+        config = mw.addonManager.getConfig(addon_name)
+        return config.get("show_session_tally", True) if config else False
 
     def show_tooltip(self, reward):
         image_path = Path(PATH_THIS_ADDON) / reward["image_path"]

@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS item_name_idx ON rewards (item_name);

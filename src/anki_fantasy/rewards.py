@@ -94951,7 +94951,9 @@ RARE_REWARDS_SET_23 = [
     {
         "item_name": "Water Filter Component Materials",
         "image_path": "img/water_filter_component_materials.png",
-    }
+    },
+    {"item_name": "Grade 6 Dark Matter", "image_path": "img/grade_6_dark_matter.png"},
+    {"item_name": "Grade 6 Dark Matter", "image_path": "img/grade_6_dark_matter.png"}
 ]
 
 REWARDS_SET_24 = [
@@ -98898,7 +98900,23 @@ RARE_REWARDS_SET_24 = [
     {"item_name": "Pinprick Pebble", "image_path": "img/pinprick_pebble.png"},
     {"item_name": "Pinprick Pebble", "image_path": "img/pinprick_pebble.png"},
     {"item_name": "Legionary Visor", "image_path": "img/legionary_visor.png"},
-    {"item_name": "Legionary Visor", "image_path": "img/legionary_visor.png"}
+    {"item_name": "Legionary Visor", "image_path": "img/legionary_visor.png"},
+    {"item_name": "Midland Basil", "image_path": "img/midland_basil.png"},
+    {"item_name": "Midland Basil", "image_path": "img/midland_basil.png"},
+    {"item_name": "Nutmeg", "image_path": "img/nutmeg.png"},
+    {"item_name": "Nutmeg", "image_path": "img/nutmeg.png"},
+    {"item_name": "Thanalan Tea Leaves", "image_path": "img/thanalan_tea_leaves.png"},
+    {"item_name": "Thanalan Tea Leaves", "image_path": "img/thanalan_tea_leaves.png"},
+    {"item_name": "Mariner Cotton Cloth", "image_path": "img/mariner_cotton_cloth.png"},
+    {"item_name": "Mariner Cotton Cloth", "image_path": "img/mariner_cotton_cloth.png"},
+    {"item_name": "Maiden Grass", "image_path": "img/maiden_grass.png"},
+    {"item_name": "Maiden Grass", "image_path": "img/maiden_grass.png"},
+    {"item_name": "Raziqsand", "image_path": "img/raziqsand.png"},
+    {"item_name": "Raziqsand", "image_path": "img/raziqsand.png"},
+    {"item_name": "Native Gold", "image_path": "img/native_gold.png"},
+    {"item_name": "Native Gold", "image_path": "img/native_gold.png"},
+    {"item_name": "Hippogryph Skin", "image_path": "img/hippogryph_skin.png"},
+    {"item_name": "Hippogryph Skin", "image_path": "img/hippogryph_skin.png"}
 ]
 
 REWARDS_SET_25 = [

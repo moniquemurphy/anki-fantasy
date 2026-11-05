@@ -1,3 +1,4 @@
 {
-    "placeholder": 100
+    "placeholder": 100,
+    "show_session_tally": false
 }

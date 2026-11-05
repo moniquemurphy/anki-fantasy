@@ -30,6 +30,14 @@ If you'd like to develop and then build locally, check out this repository, make
 
 You can then double click that archive and it will open and load in Anki. You should delete the add-on before installing a different or new version from local.
 
+### Item Count Sidebar
+There is an optional sidebar to show what item drops you have received since Anki was last opened. You can turn it on with the following steps:
+
+1. Go to Tools --> Add-ons in the Anki menu.
+2. Highlight "Anki Fantasy" in your list of add-ons.
+3. Click the "Config" button.
+4. Set `show_session_tally: true`. Click OK.
+
 ### Miscellaneous Notes
 This is a big add-on. There are a lot of images.
 
