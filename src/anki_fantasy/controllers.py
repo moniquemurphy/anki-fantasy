@@ -196,6 +196,8 @@ class ReviewingController:
         self.crafting_level = self.rewards_repo.get_crafting_level()
 
     def on_answer(self, ease):
+        addon_name = __name__.split('.')[0]
+        config = mw.addonManager.getConfig(addon_name)
         if ease > 1:
             self.streak += 1
             if self.rewards_counter % 50 == 0:
@@ -212,8 +214,8 @@ class ReviewingController:
                     self.session_tally[item_name] = self.session_tally.get(item_name, 0) + 1
                     self.tally_widget.update_tally(item_name, self.session_tally[item_name], reward["image_path"])
                     
-
-                self.show_tooltip(reward)
+                if config.get("show_notification_popups"):
+                    self.show_tooltip(reward)
         else:
             self.streak = 0
 

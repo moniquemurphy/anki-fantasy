@@ -1,4 +1,5 @@
 {
     "placeholder": 100,
+    "show_notification_popups": true,
     "show_session_tally": false
 }
